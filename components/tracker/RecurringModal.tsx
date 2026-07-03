@@ -22,7 +22,7 @@ const MONTHS = [
 function monthOptions() {
   const opts = [];
   const now = new Date();
-  for (let i = -2; i <= 24; i++) {
+  for (let i = 0; i <= 24; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     opts.push({
       value: d.toISOString().split("T")[0],
@@ -293,6 +293,9 @@ export default function RecurringModal({ categories, labels, wallets, onCreated,
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
+                <p className="font-inter text-[11px] text-white/30 mt-1.5 leading-relaxed">
+                  Transactions are auto-created on the day each month going forward. If the day has already passed this month, you&apos;ll be asked whether to create one now.
+                </p>
               </div>
               <div className="flex-1">
                 <label className="block font-inter text-xs text-white/50 mb-1.5">End month <span className="text-white/30">(optional)</span></label>
