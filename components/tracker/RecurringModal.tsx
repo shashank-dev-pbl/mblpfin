@@ -80,13 +80,11 @@ export default function RecurringModal({ categories, labels, wallets, onCreated,
     return day <= now.getDate(); // day has already passed or is today
   }
 
-  async function submit(createForCurrentMonth: boolean) {
+  async function submit(p: object, createForCurrentMonth: boolean) {
     setSaving(true);
     setError(null);
 
-    const payload = pendingPayload
-      ? { ...pendingPayload, create_for_current_month: createForCurrentMonth }
-      : null;
+    const payload = { ...p, create_for_current_month: createForCurrentMonth };
 
     try {
       const res = await fetch("/api/tracker/recurring", {
@@ -136,8 +134,7 @@ export default function RecurringModal({ categories, labels, wallets, onCreated,
       return;
     }
 
-    setPendingPayload(payload);
-    submit(false);
+    submit(payload, false);
   }
 
   const INPUT = "w-full bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2.5 font-inter text-sm text-white placeholder-white/25 focus:outline-none focus:border-white/30 transition-colors";
@@ -167,14 +164,14 @@ export default function RecurringModal({ categories, labels, wallets, onCreated,
             </div>
             <div className="flex gap-3 w-full">
               <button
-                onClick={() => { setShowRetroPrompt(false); submit(false); }}
+                onClick={() => { setShowRetroPrompt(false); submit(pendingPayload!, false); }}
                 disabled={saving}
                 className="flex-1 font-inter text-sm text-white/60 border border-white/[0.10] rounded-lg py-2.5 hover:bg-white/[0.05] transition-colors disabled:opacity-40"
               >
                 Start next month
               </button>
               <button
-                onClick={() => { setShowRetroPrompt(false); submit(true); }}
+                onClick={() => { setShowRetroPrompt(false); submit(pendingPayload!, true); }}
                 disabled={saving}
                 className="flex-1 font-inter text-sm font-semibold bg-white text-[#0A1628] rounded-lg py-2.5 hover:bg-white/90 transition-colors disabled:opacity-40"
               >
