@@ -13,6 +13,7 @@ import NeedWantRatio, {
   type NeedWantData,
 } from "@/components/tracker/NeedWantRatio";
 import PeriodFilter from "@/components/tracker/PeriodFilter";
+import { fetchAllRows } from "@/lib/tracker/fetch-all";
 import AddEntryModal from "@/components/tracker/AddEntryModal";
 import type { Wallet } from "@/components/tracker/CreateWalletModal";
 
@@ -46,15 +47,24 @@ export default function AnalyticsClient({ wallets }: { wallets: Wallet[] }) {
     async (start: string, end: string, label: string) => {
       setPeriodLabel(label);
       setLoading(true);
-      const { data } = await supabase
-        .from("transactions")
-        .select(
-          "amount, date, type, entry_type, categories(name), transaction_labels(labels(name))"
-        )
-        .gte("date", start)
-        .lte("date", end)
-        .order("date", { ascending: false });
-      setTxs((data ?? []) as unknown as RawTx[]);
+      // Paged: a single response is silently capped at 1000 rows.
+      const { data } = await fetchAllRows<RawTx>(
+        (from, to) =>
+          supabase
+            .from("transactions")
+            .select(
+              "amount, date, type, entry_type, categories(name), transaction_labels(labels(name))"
+            )
+            .gte("date", start)
+            .lte("date", end)
+            .order("date", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to) as unknown as PromiseLike<{
+            data: RawTx[] | null;
+            error: { message: string } | null;
+          }>
+      );
+      setTxs(data);
       setLoading(false);
 
       if (insightFetchedForPeriod.current !== label) {

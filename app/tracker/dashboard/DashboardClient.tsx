@@ -13,6 +13,7 @@ import EntryCountPill from "@/components/tracker/EntryCountPill";
 import ExpiredBanner from "@/components/tracker/ExpiredBanner";
 import HaltedBanner from "@/components/tracker/HaltedBanner";
 import type { Wallet } from "@/components/tracker/CreateWalletModal";
+import { toLocalISO } from "@/lib/tracker/dates";
 
 interface Props {
   stats: { totalIncome: number; totalExpense: number; netBalance: number; walletCount: number };
@@ -64,11 +65,11 @@ export default function DashboardClient({
   // Period state — initialised to the current month so the first render is stable
   const [periodStart, setPeriodStart] = useState<string>(() => {
     const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1).toISOString().split("T")[0];
+    return toLocalISO(new Date(n.getFullYear(), n.getMonth(), 1));
   });
   const [periodEnd, setPeriodEnd] = useState<string>(() => {
     const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().split("T")[0];
+    return toLocalISO(new Date(n.getFullYear(), n.getMonth() + 1, 0));
   });
   const [periodLabel, setPeriodLabel] = useState<string>(() =>
     new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })

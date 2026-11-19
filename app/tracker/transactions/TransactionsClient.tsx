@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import AddEntryModal from "@/components/tracker/AddEntryModal";
 import TransactionFeed, { type Transaction } from "@/components/tracker/TransactionFeed";
 import PeriodFilter from "@/components/tracker/PeriodFilter";
+import { fetchAllRows } from "@/lib/tracker/fetch-all";
 import type { Wallet } from "@/components/tracker/CreateWalletModal";
 import RecurringSection from "./RecurringSection";
 
@@ -44,16 +45,25 @@ export default function TransactionsClient({
     async (start: string, end: string, label: string) => {
       setPeriodLabel(label);
       setPeriodLoading(true);
-      const { data } = await supabase
-        .from("transactions")
-        .select(
-          "*, categories(name), wallet:wallets!transactions_wallet_id_fkey(name, emoji, color), transaction_labels(label_id, labels(name)), recurring_id"
-        )
-        .gte("date", start)
-        .lte("date", end)
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false });
-      setPeriodTx((data ?? []) as Transaction[]);
+      // Paged: a single response is silently capped at 1000 rows.
+      const { data } = await fetchAllRows<Transaction>(
+        (from, to) =>
+          supabase
+            .from("transactions")
+            .select(
+              "*, categories(name), wallet:wallets!transactions_wallet_id_fkey(name, emoji, color), transaction_labels(label_id, labels(name)), recurring_id"
+            )
+            .gte("date", start)
+            .lte("date", end)
+            .order("date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to) as unknown as PromiseLike<{
+            data: Transaction[] | null;
+            error: { message: string } | null;
+          }>
+      );
+      setPeriodTx(data);
       setPeriodLoading(false);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

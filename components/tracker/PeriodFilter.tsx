@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toLocalISO } from "@/lib/tracker/dates";
 
 interface PeriodFilterProps {
   onChange: (start: string, end: string, label: string) => void;
 }
 
 function toISO(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return toLocalISO(d);
 }
 
 function computePeriod(
