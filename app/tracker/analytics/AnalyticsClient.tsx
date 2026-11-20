@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import SpendByCategory, {
@@ -14,6 +14,7 @@ import NeedWantRatio, {
 } from "@/components/tracker/NeedWantRatio";
 import PeriodFilter from "@/components/tracker/PeriodFilter";
 import { fetchAllRows } from "@/lib/tracker/fetch-all";
+import { track } from "@/lib/analytics/track";
 import AddEntryModal from "@/components/tracker/AddEntryModal";
 import type { Wallet } from "@/components/tracker/CreateWalletModal";
 
@@ -126,6 +127,11 @@ export default function AnalyticsClient({ wallets }: { wallets: Wallet[] }) {
     []
   );
 
+  // GA4: the AI insight card rendered
+  useEffect(() => {
+    if (insight) track("ai_insight_view");
+  }, [insight]);
+
   const analytics = useMemo(() => {
     let totalSpent = 0;
     let expenseCount = 0;
@@ -228,10 +234,12 @@ export default function AnalyticsClient({ wallets }: { wallets: Wallet[] }) {
             <MonthlyChart data={analytics.monthlyData} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <SpendByCategory data={analytics.chartData} />
-              <NeedWantRatio
-                needTotal={analytics.needWant.needTotal}
-                wantTotal={analytics.needWant.wantTotal}
-              />
+              <div data-ga-hover="chart_hover" data-ga-chart-type="need_vs_want">
+                <NeedWantRatio
+                  needTotal={analytics.needWant.needTotal}
+                  wantTotal={analytics.needWant.wantTotal}
+                />
+              </div>
             </div>
           </>
         )}
@@ -239,7 +247,7 @@ export default function AnalyticsClient({ wallets }: { wallets: Wallet[] }) {
 
       {/* FAB */}
       <button
-        onClick={() => setShowModal(true)}
+        data-ga="add_entry_click" data-ga-cta-location="analytics" onClick={() => setShowModal(true)}
         className="sm:hidden fixed bottom-6 right-5 z-40 flex items-center gap-2 bg-white text-navy-dark font-semibold text-sm rounded-2xl px-5 py-3 shadow-lg shadow-black/40 hover:bg-white/90 transition"
         aria-label="Add Entry"
       >

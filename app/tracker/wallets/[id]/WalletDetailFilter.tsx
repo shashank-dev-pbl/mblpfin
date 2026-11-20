@@ -301,6 +301,7 @@ export default function WalletDetailFilter({
         transactions={filtered}
         wallets={wallets}
         onSnapshotDate={setSnapshotDate}
+        analyticsSource="wallet_detail"
       />
 
       {snapshotDate && (

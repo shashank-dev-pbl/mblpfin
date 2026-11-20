@@ -9,6 +9,7 @@ import CategoryPickerSheet from "./CategoryPickerSheet";
 import LabelPickerSheet from "./LabelPickerSheet";
 import UpgradeModal from "./UpgradeModal";
 import { todayLocalISO } from "@/lib/tracker/dates";
+import { amountBucket, track } from "@/lib/analytics/track";
 
 type Category = { id: string; name: string; icon: string | null; type?: string | null };
 type Label = { id: string; name: string; color: string | null };
@@ -160,9 +161,11 @@ export default function AddEntryModal({
 
       const data = await res.json();
       if (!res.ok) {
+        track("voice_entry_parsed", { success: false, mode: isTransferMode ? "transfer" : "entry" });
         setParseError(data.message ?? data.error ?? "Parsing failed — please fill in manually");
         return;
       }
+      track("voice_entry_parsed", { success: true, mode: isTransferMode ? "transfer" : "entry" });
 
       if (data.amount != null) setAmount(String(data.amount));
 
@@ -195,6 +198,7 @@ export default function AddEntryModal({
         }
       }
     } catch {
+      track("voice_entry_parsed", { success: false, mode: entryType === "transfer" ? "transfer" : "entry" });
       setParseError("Couldn't reach the server — please fill in manually");
     } finally {
       setParsing(false);
@@ -311,6 +315,11 @@ export default function AddEntryModal({
         setLoading(false);
         return;
       }
+      track("entry_saved", {
+        entry_type: "transfer",
+        wallet_id: walletId,
+        amount_bucket: amountBucket(parsedAmount),
+      });
       router.refresh();
       onCreated();
       return;
@@ -334,6 +343,7 @@ export default function AddEntryModal({
 
     if (res.status === 402) {
       console.log("upgrade modal triggered");
+      track("paywall_viewed", { trigger_source: "limit_reached" });
       setShowUpgradeModal(true);
       setLoading(false);
       return;
@@ -342,6 +352,13 @@ export default function AddEntryModal({
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Failed to save — please try again."); setLoading(false); return; }
 
+    // GA4: core product action. Amount is bucketed — never send raw amounts.
+    track("entry_saved", {
+      entry_type: entryType,
+      category: categories.find((c) => c.id === categoryId)?.name,
+      wallet_id: walletId || undefined,
+      amount_bucket: amountBucket(parsedAmount),
+    });
     router.refresh();
     onCreated();
   }
