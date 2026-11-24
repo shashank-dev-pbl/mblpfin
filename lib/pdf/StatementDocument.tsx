@@ -251,7 +251,7 @@ export function StatementDocument(p: StatementProps) {
               })}
               {m && (
                 <View style={s.monthSum} wrap={false}>
-                  <Text style={[s.bold, { width: "34%" }]}>{monthTitle(g.key)} summary</Text>
+                  <Text style={[s.bold, { width: "34%" }]}>{monthTitle(g.key)}</Text>
                   <Text style={{ width: "22%" }}>Income <Rupee n={m.income} bold /></Text>
                   <Text style={{ width: "22%" }}>Expense <Rupee n={m.expense} bold /></Text>
                   <Text style={[s.right, { width: "22%" }]}>Net <Rupee n={m.net} signed bold /></Text>
