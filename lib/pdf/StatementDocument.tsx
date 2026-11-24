@@ -12,26 +12,27 @@ import {
 import { rowKind, type ExportRow } from "@/lib/export/rows";
 import type { CategoryTotal, TotalsResponse } from "@/lib/tracker/totals-types";
 
-// ── Fonts (bundled in lib/pdf/fonts; Inter, OFL) ─────────────────────────
-// "Inter" covers Latin; the ₹ sign lives in Inter's latin-ext subset, so it is
-// drawn with the second family. Emoji have no glyphs and are stripped.
+// ── Fonts (bundled in lib/pdf/fonts; Nunito Sans 10pt Expanded, OFL) ─────
+// Same family as the statement design. Latin covers text; the ₹ sign lives in
+// the latin-ext subset, so it is drawn with the second family ("NunitoExt").
+// Emoji have no glyphs and are stripped.
 const FONT_DIR = path.join(process.cwd(), "lib/pdf/fonts");
 let fontsReady = false;
 function registerFonts() {
   if (fontsReady) return;
   Font.register({
-    family: "Inter",
+    family: "Nunito",
     fonts: [
-      { src: path.join(FONT_DIR, "inter-latin-400-normal.woff"), fontWeight: 400 },
-      { src: path.join(FONT_DIR, "inter-latin-600-normal.woff"), fontWeight: 600 },
-      { src: path.join(FONT_DIR, "inter-latin-700-normal.woff"), fontWeight: 700 },
+      { src: path.join(FONT_DIR, "NunitoSansExp-latin-400.ttf"), fontWeight: 400 },
+      { src: path.join(FONT_DIR, "NunitoSansExp-latin-600.ttf"), fontWeight: 600 },
+      { src: path.join(FONT_DIR, "NunitoSansExp-latin-700.ttf"), fontWeight: 700 },
     ],
   });
   Font.register({
-    family: "InterExt",
+    family: "NunitoExt",
     fonts: [
-      { src: path.join(FONT_DIR, "inter-latin-ext-400-normal.woff"), fontWeight: 400 },
-      { src: path.join(FONT_DIR, "inter-latin-ext-700-normal.woff"), fontWeight: 700 },
+      { src: path.join(FONT_DIR, "NunitoSansExp-latin-ext-400.ttf"), fontWeight: 400 },
+      { src: path.join(FONT_DIR, "NunitoSansExp-latin-ext-700.ttf"), fontWeight: 700 },
     ],
   });
   Font.registerHyphenationCallback((w) => [w]);
@@ -53,7 +54,7 @@ const BAND = "#F7F7F7";
 const MUTED = "#6B7280";
 
 const s = StyleSheet.create({
-  page: { fontFamily: "Inter", fontSize: 9, color: "#111827", paddingTop: 40, paddingBottom: 54, paddingHorizontal: 40 },
+  page: { fontFamily: "Nunito", fontSize: 9, color: "#111827", paddingTop: 40, paddingBottom: 54, paddingHorizontal: 40 },
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   title: { fontSize: 30, fontWeight: 700, color: NAVY, letterSpacing: 0.5 },
   logoBox: { width: 52, height: 52, backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
@@ -93,27 +94,23 @@ const fmt = (n: number) => {
   return Number.isInteger(a) ? nf0.format(a) : nf2.format(a);
 };
 
-/** ₹ is drawn in the latin-ext family; digits in Inter. */
+/** ₹ is drawn in the latin-ext family; digits in Nunito. */
 function Rupee({ n, signed, bold, color }: { n: number; signed?: boolean; bold?: boolean; color?: string }) {
   const sign = signed ? (n < 0 ? "-" : n > 0 ? "+" : "") : n < 0 ? "-" : "";
   const w = bold ? 700 : 400;
   return (
     <Text style={{ fontWeight: w, color }}>
       {sign}
-      <Text style={{ fontFamily: "InterExt", fontWeight: w }}>{"₹"}</Text>
+      <Text style={{ fontFamily: "NunitoExt", fontWeight: w }}>{"₹"}</Text>
       {fmt(n)}
     </Text>
   );
 }
 
+const MON3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function prettyDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return `${String(d).padStart(2, "0")} ${MON3[m - 1]} ${y}`;
 }
 
 export interface MonthSummary {
@@ -254,10 +251,10 @@ export function StatementDocument(p: StatementProps) {
               })}
               {m && (
                 <View style={s.monthSum} wrap={false}>
-                  <Text style={[s.bold, { width: "28%" }]}>{monthTitle(g.key)} summary</Text>
-                  <Text style={{ width: "24%" }}>Income <Rupee n={m.income} bold /></Text>
-                  <Text style={{ width: "24%" }}>Expense <Rupee n={m.expense} bold /></Text>
-                  <Text style={[s.right, { width: "24%" }]}>Net <Rupee n={m.net} signed bold /></Text>
+                  <Text style={[s.bold, { width: "34%" }]}>{monthTitle(g.key)} summary</Text>
+                  <Text style={{ width: "22%" }}>Income <Rupee n={m.income} bold /></Text>
+                  <Text style={{ width: "22%" }}>Expense <Rupee n={m.expense} bold /></Text>
+                  <Text style={[s.right, { width: "22%" }]}>Net <Rupee n={m.net} signed bold /></Text>
                 </View>
               )}
             </View>
