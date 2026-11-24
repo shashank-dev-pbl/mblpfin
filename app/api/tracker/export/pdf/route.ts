@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { StatementDocument } from "@/lib/pdf/StatementDocument";
-import { exportFilename, fetchAllRows, prepareExport } from "@/lib/export/rows";
+import { exportFilename, fetchAllRows, monthSummaries, prepareExport } from "@/lib/export/rows";
 import { getUserPlan } from "@/lib/tracker/plan";
 
 export const runtime = "nodejs";
@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
   if (ctx.error) return ctx.error;
 
   try {
-    const [rows, profile, wallet] = await Promise.all([
+    const [rows, months, profile, wallet] = await Promise.all([
       fetchAllRows(ctx),
+      monthSummaries(ctx),
       getUserPlan(ctx.supabase, ctx.user.id),
       ctx.walletId
         ? ctx.supabase.from("wallets").select("name").eq("id", ctx.walletId).maybeSingle()
@@ -31,6 +32,8 @@ export async function GET(req: NextRequest) {
         from: ctx.from,
         to: ctx.to,
         userName: profile?.name ?? "",
+        userPhone: ctx.user.phone || (ctx.user.user_metadata?.phone as string | undefined) || null,
+        months,
         walletName: (wallet.data as { name: string } | null)?.name ?? null,
         generatedOn,
       })

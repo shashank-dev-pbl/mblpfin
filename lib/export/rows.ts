@@ -163,3 +163,46 @@ export async function fetchAllRows(ctx: ExportContext): Promise<ExportRow[]> {
 export function exportFilename(from: string, to: string, ext: "csv" | "pdf") {
   return `mblpfin-${from}-to-${to}.${ext}`;
 }
+
+export interface MonthSummaryRow {
+  key: string; // YYYY-MM
+  income: number;
+  expense: number;
+  net: number;
+  entries: number;
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * One SQL summary per calendar month in [from, to] (first/last month clipped to
+ * the range). Uses totals_for_period per month so the wallet filter applies and
+ * every number comes from the same SQL as the dashboard.
+ */
+export async function monthSummaries(ctx: ExportContext): Promise<MonthSummaryRow[]> {
+  const out: { key: string; from: string; to: string }[] = [];
+  let y = Number(ctx.from.slice(0, 4));
+  let m = Number(ctx.from.slice(5, 7));
+  const endKey = ctx.to.slice(0, 7);
+  for (;;) {
+    const key = `${y}-${pad(m)}`;
+    if (key > endKey) break;
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    out.push({
+      key,
+      from: key === ctx.from.slice(0, 7) ? ctx.from : `${key}-01`,
+      to: key === endKey ? ctx.to : `${key}-${pad(last)}`,
+    });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return Promise.all(
+    out.map(async (o) => {
+      const t = await getTotals(ctx.supabase, { from: o.from, to: o.to, walletId: ctx.walletId });
+      return { key: o.key, income: t.income, expense: t.expense, net: t.net, entries: t.entries };
+    })
+  );
+}

@@ -38,11 +38,14 @@ function registerFonts() {
   fontsReady = true;
 }
 
-// Optional brand logo: drop a PNG at public/brand/statement-logo.png and it is
+// Brand logo: public/brand/statement-logo.(png|jpg) and it is
 // used automatically. Until then a navy "MBL" tile (as in the statement design).
 function loadLogo(): string | null {
-  const p = path.join(process.cwd(), "public/brand/statement-logo.png");
-  return fs.existsSync(p) ? p : null;
+  for (const f of ["statement-logo.png", "statement-logo.jpg", "statement-logo.jpeg"]) {
+    const p = path.join(process.cwd(), "public/brand", f);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
 }
 
 const NAVY = "#1B2142";
@@ -74,6 +77,9 @@ const s = StyleSheet.create({
   grand: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
   grandBox: { flexDirection: "row", backgroundColor: NAVY, paddingVertical: 7, paddingHorizontal: 12, width: 220, justifyContent: "space-between" },
   grandText: { color: "#fff", fontWeight: 700, fontSize: 10 },
+  monthTitle: { fontSize: 10, fontWeight: 700, color: NAVY, marginTop: 14, marginBottom: 4 },
+  monthSum: { flexDirection: "row", backgroundColor: "#E6E9F2", paddingVertical: 7, paddingHorizontal: 8, marginTop: 2, fontSize: 9 },
+  grandFull: { flexDirection: "row", backgroundColor: NAVY, paddingVertical: 8, paddingHorizontal: 8, width: "100%" },
   footer: { position: "absolute", left: 40, right: 40, bottom: 24, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: MUTED },
 });
 
@@ -110,13 +116,27 @@ function prettyDate(iso: string) {
   });
 }
 
+export interface MonthSummary {
+  key: string; // YYYY-MM
+  income: number;
+  expense: number;
+  net: number;
+  entries: number;
+}
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const monthTitle = (key: string) => `${MONTH_NAMES[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+
 export interface StatementProps {
   rows: ExportRow[];
   totals: TotalsResponse;
   from: string;
   to: string;
   userName: string;
+  userPhone?: string | null;
   walletName: string | null;
+  /** One entry per calendar month in the range, ascending; computed in SQL. */
+  months: MonthSummary[];
   generatedOn: string; // YYYY-MM-DD (IST)
 }
 
@@ -127,6 +147,14 @@ export function StatementDocument(p: StatementProps) {
   registerFonts();
   const logo = loadLogo();
   const cats: CategoryTotal[] = p.totals.by_category ?? [];
+  const byMonth = new Map<string, ExportRow[]>();
+  for (const r of p.rows) {
+    const k = r.date.slice(0, 7);
+    (byMonth.get(k) ?? byMonth.set(k, []).get(k)!).push(r);
+  }
+  const groups = [...byMonth.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([key, rows]) => ({ key, rows }));
 
   return (
     <Document title={`MBL PFin statement ${p.from} to ${p.to}`} author="MBL PFin">
@@ -146,14 +174,16 @@ export function StatementDocument(p: StatementProps) {
         <View style={s.meta}>
           <View style={s.metaLeft}>
             <Text style={s.bold}>{clean(p.userName) || "MBL PFin user"}</Text>
-            <Text>
-              {prettyDate(p.from)} – {prettyDate(p.to)}
-            </Text>
+            {p.userPhone ? <Text>{clean(p.userPhone)}</Text> : null}
             <Text>{p.walletName ? clean(p.walletName) : "All wallets"}</Text>
           </View>
           <View style={s.metaRight}>
             <Text style={s.bold}>DATE :</Text>
             <Text>{prettyDate(p.generatedOn)}</Text>
+            <Text style={[s.bold, { marginTop: 6 }]}>PERIOD :</Text>
+            <Text>
+              {prettyDate(p.from)} – {prettyDate(p.to)}
+            </Text>
           </View>
         </View>
 
@@ -191,38 +221,79 @@ export function StatementDocument(p: StatementProps) {
         )}
 
         <Text style={s.h2}>Transactions ({p.rows.length})</Text>
-        <View style={s.thead} fixed={false}>
-          <Text style={[s.th, { width: W.date }]}>DATE</Text>
-          <Text style={[s.th, { width: W.desc }]}>DESCRIPTION</Text>
-          <Text style={[s.th, { width: W.cat }]}>CATEGORY</Text>
-          <Text style={[s.th, { width: W.wallet }]}>WALLET</Text>
-          <Text style={[s.th, s.right, { width: W.amt }]}>AMOUNT</Text>
-        </View>
-        {p.rows.map((r, i) => {
-          const kind = rowKind(r);
-          const a = Number(r.amount);
-          const signed = kind === "expense" ? -Math.abs(a) : kind === "income" ? Math.abs(a) : a;
-          const desc =
-            clean(r.description) ||
-            (r.is_opening_balance ? "Opening balance" : kind === "transfer" ? "Transfer" : "");
+        {groups.map((g) => {
+          const m = p.months.find((x) => x.key === g.key);
           return (
-            <View key={r.id} style={i % 2 ? [s.tr] : [s.tr, s.trAlt]} wrap={false}>
-              <Text style={{ width: W.date }}>{prettyDate(r.date)}</Text>
-              <Text style={{ width: W.desc }}>{desc}</Text>
-              <Text style={{ width: W.cat }}>{clean(r.categories?.name)}</Text>
-              <Text style={{ width: W.wallet }}>{clean(r.wallet?.name)}</Text>
-              <Text style={[s.right, { width: W.amt }]}>
-                <Rupee n={signed} signed />
-              </Text>
+            <View key={g.key}>
+              <Text style={s.monthTitle} minPresenceAhead={60}>{monthTitle(g.key)}</Text>
+              <View style={s.thead} wrap={false}>
+                <Text style={[s.th, { width: W.date }]}>DATE</Text>
+                <Text style={[s.th, { width: W.desc }]}>DESCRIPTION</Text>
+                <Text style={[s.th, { width: W.cat }]}>CATEGORY</Text>
+                <Text style={[s.th, { width: W.wallet }]}>WALLET</Text>
+                <Text style={[s.th, s.right, { width: W.amt }]}>AMOUNT</Text>
+              </View>
+              {g.rows.map((r, i) => {
+                const kind = rowKind(r);
+                const a = Number(r.amount);
+                const signed = kind === "expense" ? -Math.abs(a) : kind === "income" ? Math.abs(a) : a;
+                const desc =
+                  clean(r.description) ||
+                  (r.is_opening_balance ? "Opening balance" : kind === "transfer" ? "Transfer" : "");
+                return (
+                  <View key={r.id} style={i % 2 ? [s.tr] : [s.tr, s.trAlt]} wrap={false}>
+                    <Text style={{ width: W.date }}>{prettyDate(r.date)}</Text>
+                    <Text style={{ width: W.desc }}>{desc}</Text>
+                    <Text style={{ width: W.cat }}>{clean(r.categories?.name)}</Text>
+                    <Text style={{ width: W.wallet }}>{clean(r.wallet?.name)}</Text>
+                    <Text style={[s.right, { width: W.amt }]}>
+                      <Rupee n={signed} signed />
+                    </Text>
+                  </View>
+                );
+              })}
+              {m && (
+                <View style={s.monthSum} wrap={false}>
+                  <Text style={[s.bold, { width: "28%" }]}>{monthTitle(g.key)} summary</Text>
+                  <Text style={{ width: "24%" }}>Income <Rupee n={m.income} bold /></Text>
+                  <Text style={{ width: "24%" }}>Expense <Rupee n={m.expense} bold /></Text>
+                  <Text style={[s.right, { width: "24%" }]}>Net <Rupee n={m.net} signed bold /></Text>
+                </View>
+              )}
             </View>
           );
         })}
 
-        <View style={s.grand} wrap={false}>
-          <View style={s.grandBox}>
-            <Text style={s.grandText}>Net (income - expense):</Text>
-            <Text style={s.grandText}><Rupee n={p.totals.net} signed bold color="#fff" /></Text>
+        <View wrap={false}>
+          <Text style={s.h2}>Final summary</Text>
+          <View style={s.thead}>
+            <Text style={[s.th, { width: "34%" }]}>MONTH</Text>
+            <Text style={[s.th, s.right, { width: "22%" }]}>INCOME</Text>
+            <Text style={[s.th, s.right, { width: "22%" }]}>EXPENSE</Text>
+            <Text style={[s.th, s.right, { width: "22%" }]}>NET</Text>
           </View>
+          {p.months.map((m, i) => (
+            <View key={m.key} style={i % 2 ? [s.tr] : [s.tr, s.trAlt]} wrap={false}>
+              <Text style={{ width: "34%" }}>{monthTitle(m.key)}</Text>
+              <Text style={[s.right, { width: "22%" }]}><Rupee n={m.income} /></Text>
+              <Text style={[s.right, { width: "22%" }]}><Rupee n={m.expense} /></Text>
+              <Text style={[s.right, { width: "22%" }]}><Rupee n={m.net} signed /></Text>
+            </View>
+          ))}
+          <View style={s.grand}>
+            <View style={s.grandFull}>
+              <Text style={[s.grandText, { width: "34%" }]}>TOTAL ({p.totals.entries} entries)</Text>
+              <Text style={[s.grandText, s.right, { width: "22%" }]}><Rupee n={p.totals.income} bold color="#fff" /></Text>
+              <Text style={[s.grandText, s.right, { width: "22%" }]}><Rupee n={p.totals.expense} bold color="#fff" /></Text>
+              <Text style={[s.grandText, s.right, { width: "22%" }]}><Rupee n={p.totals.net} signed bold color="#fff" /></Text>
+            </View>
+          </View>
+          {(p.totals.transfers_in > 0 || p.totals.transfers_out > 0) && (
+            <Text style={{ marginTop: 6, fontSize: 8, color: MUTED }}>
+              Transfers between your wallets are not counted in income or expense: moved in{" "}
+              <Rupee n={p.totals.transfers_in} /> · moved out <Rupee n={p.totals.transfers_out} />
+            </Text>
+          )}
         </View>
 
         <View style={s.footer} fixed>
