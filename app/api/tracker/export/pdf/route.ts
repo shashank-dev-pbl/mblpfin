@@ -8,10 +8,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // GET /api/tracker/export/pdf?from=YYYY-MM-DD&to=YYYY-MM-DD[&wallet_id=uuid]
-// Pro only. Summary tiles and the category table come from the same SQL as the
+// Same rules as the CSV: Free = current financial year only, Pro = any range,
+// max 10,000 rows. Summary tiles and the category table come from the same SQL as the
 // dashboard (totals_for_period / spend_by_category).
 export async function GET(req: NextRequest) {
-  const ctx = await prepareExport(req, { proOnly: true });
+  const ctx = await prepareExport(req, { proOnly: false, withCategories: true });
   if (ctx.error) return ctx.error;
 
   try {

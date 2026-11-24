@@ -71,7 +71,7 @@ function fail(status: number, body: Record<string, unknown>) {
  */
 export async function prepareExport(
   req: NextRequest,
-  opts: { proOnly: boolean }
+  opts: { proOnly: boolean; withCategories?: boolean }
 ): Promise<{ error: NextResponse } | ({ error?: undefined } & ExportContext)> {
   const supabase = await createClient();
   const {
@@ -100,7 +100,7 @@ export async function prepareExport(
       from,
       to,
       walletId,
-      include: opts.proOnly ? ["by_category"] : [],
+      include: opts.withCategories ? ["by_category"] : [],
     });
   } catch (e) {
     console.error("[export] totals", e);

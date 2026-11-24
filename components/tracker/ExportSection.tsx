@@ -175,29 +175,19 @@ export default function ExportSection({ isPro, wallets }: { isPro: boolean; wall
         >
           Download CSV
         </a>
-        {isPro ? (
-          <a
-            href={canDownload ? `/api/tracker/export/pdf?${qs}` : undefined}
-            download
-            aria-disabled={!canDownload}
-            onClick={() => canDownload && track("export_downloaded", { kind: "pdf" })}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold border ${
-              canDownload
-                ? "border-amber-500/50 text-amber-300"
-                : "border-white/10 text-white/30 pointer-events-none"
-            }`}
-          >
-            Download PDF
-          </a>
-        ) : (
-          <Link
-            href="/pro"
-            onClick={() => track("upgrade_tapped", { from: "export_pdf" })}
-            className="px-4 py-2 rounded-xl text-sm font-semibold border border-white/15 text-white/60"
-          >
-            PDF statement · Pro
-          </Link>
-        )}
+        <a
+          href={canDownload ? `/api/tracker/export/pdf?${qs}` : undefined}
+          download
+          aria-disabled={!canDownload}
+          onClick={() => canDownload && track("export_downloaded", { kind: "pdf" })}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold border ${
+            canDownload
+              ? "border-amber-500/50 text-amber-300"
+              : "border-white/10 text-white/30 pointer-events-none"
+          }`}
+        >
+          Download PDF
+        </a>
       </div>
     </section>
   );
